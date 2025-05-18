@@ -1,0 +1,44 @@
+======== MOVING AVERAGE CROSSOVER STRATEGY BACKTEST REPORT ========
+
+STRATEGY PARAMETERS:
+Short Window: 20 days
+Long Window: 40 days
+Initial Capital: $10,000.00
+Position Size: 20.0% of capital
+Stop Loss: 5.0%
+Take Profit: 10.0%
+
+PERFORMANCE METRICS:
+Total Return (%): 1.71
+Annualized Return (%): 0.82
+Volatility (%): 0.92
+Sharpe Ratio: 0.89
+Max Drawdown (%): 0.87
+Max Drawdown Duration (Days): 320.00
+Number of Trades: 7.00
+Win Rate (%): 71.43
+Average Win ($): 47.90
+Average Loss ($): -34.05
+Profit Factor: 3.52
+
+COVID-19 PERIOD ANALYSIS (2020-02-01 to 2020-04-30):
+Return: 1.92%
+Trades: 1
+Win Rate: 100.00%
+
+TRADE SUMMARY:
+Total Trades: 7
+Winning Trades: 5 (71.43%)
+Losing Trades: 2
+Average Win: $47.90
+Average Loss: $-34.05
+Profit Factor: 3.52
+
+Exit Reasons:
+  time_exit: 7 trades
+
+GENERATED REPORTS:
+Trade Log: trade_log.csv
+Portfolio Value: portfolio_value.csv
+Static Plot: backtest_plot.png
+Interactive Plot: interactive_plot.html
