@@ -1,41 +1,43 @@
 ======== MOVING AVERAGE CROSSOVER STRATEGY BACKTEST REPORT ========
 
 STRATEGY PARAMETERS:
-Short Window: 20 days
-Long Window: 40 days
-Initial Capital: $10,000.00
-Position Size: 20.0% of capital
-Stop Loss: 5.0%
-Take Profit: 10.0%
+Short Window: 30 days
+Long Window: 100 days
+Initial Capital: $1,000,000.00
+Position Size: 50.0% of capital
+Stop Loss: 3.0%
+Take Profit: 6.0%
+Trailing Stop: Enabled (activates at 2.0% profit, 2.0% distance)
 
 PERFORMANCE METRICS:
-Total Return (%): 1.71
-Annualized Return (%): 0.82
-Volatility (%): 0.92
-Sharpe Ratio: 0.89
-Max Drawdown (%): 0.87
-Max Drawdown Duration (Days): 320.00
-Number of Trades: 7.00
-Win Rate (%): 71.43
-Average Win ($): 47.90
-Average Loss ($): -34.05
-Profit Factor: 3.52
+Total Return (%): 5.19
+Annualized Return (%): 1.64
+Volatility (%): 1.55
+Sharpe Ratio: 1.06
+Max Drawdown (%): 1.81
+Max Drawdown Duration (Days): 146.00
+Number of Trades: 4.00
+Win Rate (%): 75.00
+Average Win ($): 22,050.41
+Average Loss ($): -14,299.04
+Profit Factor: 4.63
 
 COVID-19 PERIOD ANALYSIS (2020-02-01 to 2020-04-30):
-Return: 1.92%
-Trades: 1
-Win Rate: 100.00%
+Return: 0.00%
+Trades: 0
+Win Rate: 0.00%
 
 TRADE SUMMARY:
-Total Trades: 7
-Winning Trades: 5 (71.43%)
-Losing Trades: 2
-Average Win: $47.90
-Average Loss: $-34.05
-Profit Factor: 3.52
+Total Trades: 4
+Winning Trades: 3 (75.00%)
+Losing Trades: 1
+Average Win: $22,050.41
+Average Loss: $-14,299.04
+Profit Factor: 4.63
 
 Exit Reasons:
-  time_exit: 7 trades
+  trailing_stop: 2 trades
+  take_profit: 2 trades
 
 GENERATED REPORTS:
 Trade Log: trade_log.csv

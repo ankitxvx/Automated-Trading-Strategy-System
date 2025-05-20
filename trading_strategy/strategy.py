@@ -26,14 +26,19 @@ class MovingAverageCrossover:
     - Buy when short-term MA crosses above long-term MA
     - Sell when short-term MA crosses below long-term MA
     """
-    def __init__(self, short_window=20, long_window=50, initial_capital=10000, 
-                 stop_loss_pct=0.05, take_profit_pct=0.1, position_size_pct=0.2):
+    
+    def __init__(self, short_window=30, long_window=70, initial_capital=10000, 
+                 stop_loss_pct=0.07, take_profit_pct=0.20, position_size_pct=0.5,
+                 use_trailing_stop=True, trailing_stop_activation=0.06, trailing_stop_distance=0.04):
         self.short_window = short_window
         self.long_window = long_window
         self.initial_capital = initial_capital
         self.stop_loss_pct = stop_loss_pct
         self.take_profit_pct = take_profit_pct
         self.position_size_pct = position_size_pct
+        self.use_trailing_stop = use_trailing_stop
+        self.trailing_stop_activation = trailing_stop_activation  # When to activate trailing stop (% profit)
+        self.trailing_stop_distance = trailing_stop_distance  # Distance to maintain for trailing stop (%)
         self.trades = []
         self.positions = {}
         self.daily_returns = []
@@ -57,7 +62,7 @@ class MovingAverageCrossover:
         
         return df
 
-    def backtest(self, data, intraday=False, days_to_hold=5):
+    def backtest(self, data, intraday=False, days_to_hold=None):
         """Run backtest on the strategy."""
         df = self.generate_signals(data)
         capital = self.initial_capital
@@ -65,6 +70,11 @@ class MovingAverageCrossover:
         entry_price = 0
         entry_date = None
         last_trade_date = None
+        trailing_stop_price = 0  # For tracking trailing stop level
+        
+        # Set default days_to_hold if None
+        if days_to_hold is None:
+            days_to_hold = 60  # Default to 60 days if not specified
         
         # For tracking portfolio value
         portfolio_value = [self.initial_capital]
@@ -80,11 +90,17 @@ class MovingAverageCrossover:
             
             # For calculating daily returns
             prev_portfolio_value = portfolio_value[-1]
-            
-            # Check for take profit or stop loss if in position
+              # Check for take profit or stop loss if in position
             if position > 0:
                 pnl_pct = (current_price - entry_price) / entry_price
                 days_held = (current_date - entry_date).days
+                
+                # Update trailing stop if using it and in profit
+                if self.use_trailing_stop and pnl_pct >= self.trailing_stop_activation:
+                    # Only update if current price gives a higher stop price than previous
+                    new_stop_price = current_price * (1 - self.trailing_stop_distance)
+                    if new_stop_price > trailing_stop_price:
+                        trailing_stop_price = new_stop_price
                 
                 # Take profit check
                 if pnl_pct >= self.take_profit_pct:
@@ -105,9 +121,31 @@ class MovingAverageCrossover:
                     all_trades.append(trade)
                     
                     position = 0
+                    trailing_stop_price = 0  # Reset trailing stop
                     last_trade_date = current_date
                 
-                # Stop loss check
+                # Trailing stop hit (only if activated)
+                elif self.use_trailing_stop and trailing_stop_price > 0 and current_price <= trailing_stop_price:
+                    profit = position * (current_price - entry_price)
+                    capital += position * current_price
+                    
+                    trade = {
+                        'entry_date': entry_date,
+                        'exit_date': current_date,
+                        'entry_price': entry_price,
+                        'exit_price': current_price,
+                        'shares': position,
+                        'pnl': profit,
+                        'pnl_pct': pnl_pct * 100,
+                        'exit_reason': 'trailing_stop'
+                    }
+                    all_trades.append(trade)
+                    
+                    position = 0
+                    trailing_stop_price = 0  # Reset trailing stop
+                    last_trade_date = current_date
+                
+                # Regular stop loss check
                 elif pnl_pct <= -self.stop_loss_pct:
                     # Sell at stop loss
                     loss = position * (current_price - entry_price)
@@ -126,6 +164,7 @@ class MovingAverageCrossover:
                     all_trades.append(trade)
                     
                     position = 0
+                    trailing_stop_price = 0  # Reset trailing stop
                     last_trade_date = current_date
                 
                 # For intraday, close position at end of day
@@ -167,8 +206,7 @@ class MovingAverageCrossover:
                     
                     position = 0
                     last_trade_date = current_date
-            
-            # Check for buy signal
+              # Check for buy signal
             if current_signal == 1 and position == 0:
                 # Only trade if enough time has passed since last trade (avoid overtrading)
                 if last_trade_date is None or (current_date - last_trade_date).days >= 1:
@@ -179,9 +217,9 @@ class MovingAverageCrossover:
                     if position > 0:
                         entry_price = current_price
                         entry_date = current_date
+                        trailing_stop_price = 0  # Reset trailing stop for new position
                         capital -= position * current_price
-            
-            # Check for sell signal
+              # Check for sell signal
             elif current_signal == -1 and position > 0:
                 profit = position * (current_price - entry_price)
                 capital += position * current_price
@@ -195,6 +233,35 @@ class MovingAverageCrossover:
                     'pnl': profit,
                     'pnl_pct': ((current_price - entry_price) / entry_price) * 100,
                     'exit_reason': 'signal'
+                }
+                all_trades.append(trade)
+                
+                position = 0
+                trailing_stop_price = 0  # Reset trailing stop
+                last_trade_date = current_date
+            
+            # Update trailing stop for long positions
+            if position > 0 and self.use_trailing_stop:
+                # Move trailing stop up if price increases
+                new_trailing_stop = current_price * (1 - self.trailing_stop_distance)
+                if new_trailing_stop > trailing_stop_price:
+                    trailing_stop_price = new_trailing_stop
+            
+            # Check for trailing stop loss
+            if position > 0 and current_price <= trailing_stop_price:
+                # Sell at trailing stop
+                loss = position * (current_price - entry_price)
+                capital += position * current_price
+                
+                trade = {
+                    'entry_date': entry_date,
+                    'exit_date': current_date,
+                    'entry_price': entry_price,
+                    'exit_price': current_price,
+                    'shares': position,
+                    'pnl': loss,
+                    'pnl_pct': ((current_price - entry_price) / entry_price) * 100,
+                    'exit_reason': 'trailing_stop'
                 }
                 all_trades.append(trade)
                 
@@ -551,14 +618,17 @@ class MovingAverageCrossover:
         
         with open(report_path, 'w') as f:
             f.write("======== MOVING AVERAGE CROSSOVER STRATEGY BACKTEST REPORT ========\n\n")
-            
             f.write("STRATEGY PARAMETERS:\n")
             f.write(f"Short Window: {self.short_window} days\n")
             f.write(f"Long Window: {self.long_window} days\n")
             f.write(f"Initial Capital: ${self.initial_capital:,.2f}\n")
             f.write(f"Position Size: {self.position_size_pct * 100:.1f}% of capital\n")
             f.write(f"Stop Loss: {self.stop_loss_pct * 100:.1f}%\n")
-            f.write(f"Take Profit: {self.take_profit_pct * 100:.1f}%\n\n")
+            f.write(f"Take Profit: {self.take_profit_pct * 100:.1f}%\n")
+            if self.use_trailing_stop:
+                f.write(f"Trailing Stop: Enabled (activates at {self.trailing_stop_activation * 100:.1f}% profit, {self.trailing_stop_distance * 100:.1f}% distance)\n\n")
+            else:
+                f.write(f"Trailing Stop: Disabled\n\n")
             
             f.write("PERFORMANCE METRICS:\n")
             for metric, value in metrics.items():
